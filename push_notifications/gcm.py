@@ -34,8 +34,8 @@ def _chunks(l, n):
 		yield l[i:i + n]
 
 
-def _gcm_send(data, content_type):
-	key = SETTINGS.get("GCM_API_KEY")
+def _gcm_send(data, content_type, **kwargs):
+	key = kwargs.get('key', SETTINGS.get("GCM_API_KEY"))
 	if not key:
 		raise ImproperlyConfigured(
 			'You need to set PUSH_NOTIFICATIONS_SETTINGS["GCM_API_KEY"] to send messages through GCM.'
@@ -50,8 +50,8 @@ def _gcm_send(data, content_type):
 	return urlopen(request, timeout=SETTINGS["GCM_ERROR_TIMEOUT"]).read().decode("utf-8")
 
 
-def _fcm_send(data, content_type):
-	key = SETTINGS.get("FCM_API_KEY")
+def _fcm_send(data, content_type, **kwargs):
+	key = kwargs.get('key', SETTINGS.get("FCM_API_KEY"))
 	if not key:
 		raise ImproperlyConfigured(
 			'You need to set PUSH_NOTIFICATIONS_SETTINGS["FCM_API_KEY"] to send messages through FCM.'
@@ -94,7 +94,7 @@ def _cm_send_plain(registration_id, data, cloud_type="GCM", **kwargs):
 		send_func = _fcm_send
 	else:
 		raise ImproperlyConfigured("cloud_type must be GCM or FCM not %r" % (cloud_type))
-	result = send_func(data, "application/x-www-form-urlencoded;charset=UTF-8")
+	result = send_func(data, "application/x-www-form-urlencoded;charset=UTF-8", **kwargs)
 
 	# Information about handling response from Google docs
 	# (https://developers.google.com/cloud-messaging/http):
@@ -183,9 +183,9 @@ def _cm_send_json(registration_ids, data, cloud_type="GCM", **kwargs):
 	# Sort the keys for deterministic output (useful for tests)
 	data = json.dumps(values, separators=(",", ":"), sort_keys=True).encode("utf-8")
 	if cloud_type == "GCM":
-		response = json.loads(_gcm_send(data, "application/json"))
+		response = json.loads(_gcm_send(data, "application/json", **kwargs))
 	elif cloud_type == "FCM":
-		response = json.loads(_fcm_send(data, "application/json"))
+		response = json.loads(_fcm_send(data, "application/json", **kwargs))
 	else:
 		raise ImproperlyConfigured("cloud_type must be GCM or FCM not %s" % str(cloud_type))
 	return _handler_cm_message_json(registration_ids, response, cloud_type)
